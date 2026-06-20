@@ -2,7 +2,7 @@
 // anon-Key ist mit aktivem RLS sicher im Frontend
 
 export const SUPABASE_URL = 'https://yejkhxeroxccvwsadqku.supabase.co'
-export const SUPABASE_ANON_KEY = 'DEIN_ANON_KEY_HIER'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllamtoeGVyb3hjY3Z3c2FkcWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMjg0MjcsImV4cCI6MjA5MjkwNDQyN30.zr-HKTtFVjRrf5e3XdkEDp8u7HLQOZbzOhxkFPrdfc4'
 
 // Plattformen (Verkauf)
 export const SALE_PLATFORMS = [
