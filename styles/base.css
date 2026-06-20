@@ -1,0 +1,138 @@
+/* styles/base.css — Custom Properties, Reset, Typografie */
+
+:root {
+  /* Neumorphic-Farben */
+  --neu-bg:           #e8e8ee;
+  --neu-shadow-dark:  #b8b8c4;
+  --neu-shadow-light: #ffffff;
+  --neu-radius-card:  16px;
+  --neu-radius-sm:    10px;
+  --neu-radius-pill:  50px;
+
+  /* Texte */
+  --neu-text-strong:  #2d2d42;
+  --neu-text:         #5a5a72;
+  --neu-text-muted:   #9898b0;
+
+  /* Akzent */
+  --neu-accent:       #14b8a6;
+  --neu-accent-dark:  #0f766e;
+  --neu-accent-light: rgba(20, 184, 166, 0.12);
+
+  /* Status */
+  --neu-green:  #34d399;
+  --neu-amber:  #fbbf24;
+  --neu-red:    #f87171;
+
+  /* Schatten */
+  --shadow-raised:  6px 6px 14px #b8b8c4, -6px -6px 14px #ffffff;
+  --shadow-inset:   inset 4px 4px 10px #b8b8c4, inset -4px -4px 10px #ffffff;
+  --shadow-subtle:  3px 3px 7px #b8b8c4, -3px -3px 7px #ffffff;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--neu-bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--neu-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100%;
+}
+
+/* Typografie-Rollen */
+.brand {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--neu-text-strong);
+  letter-spacing: -0.3px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--neu-text-strong);
+}
+
+.section-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neu-text-strong);
+}
+
+.meta-label {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neu-text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Ladeindikator */
+.loader-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.loader-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.loader-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--neu-accent);
+  box-shadow: var(--shadow-subtle);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Leer- und Fehlerzustände */
+.empty-state,
+.error-state {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--neu-text-muted);
+  font-size: 13px;
+}
+
+.error-state {
+  color: var(--neu-red);
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  border-radius: var(--neu-radius-pill);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 400;
+  background: var(--neu-accent-light);
+  color: var(--neu-accent-dark);
+}
+
+/* Balance positiv */
+.balance-positive {
+  color: var(--neu-accent-dark);
+  font-weight: 500;
+}
