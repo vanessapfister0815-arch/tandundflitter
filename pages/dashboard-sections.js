@@ -1,5 +1,10 @@
 // pages/dashboard-sections.js — KpiRow · MonthlyBars · TopCustomers · RecentSales
 // Tand & Flitter · v2.0 · 2026-06-20
+// Umgeschrieben von window.DashboardSections auf native ES-Module.
+
+// -------------------------------------------------------------------------
+// Hilfsfunktionen
+// -------------------------------------------------------------------------
 
 function fmt(n) {
   return parseFloat(n || 0).toLocaleString('de-DE', {
@@ -52,12 +57,16 @@ function kpiCard({ label, value, sub }) {
   `
 }
 
+// -------------------------------------------------------------------------
+// 1 — KpiRow
+// -------------------------------------------------------------------------
+
 export function KpiRow({ heroData, invStats, selYear }) {
-  const calcBasis   = parseFloat(heroData?.calcBasis || 0)
-  const dailyAvg    = parseFloat(heroData?.dailyAvg  || 0)
-  const elapsed     = heroData?.elapsedDays || 1
-  const isLegacy    = !!heroData?.isLegacy
-  const deltaPct    = heroData?.deltaPct ?? null
+  const calcBasis  = parseFloat(heroData?.calcBasis || 0)
+  const dailyAvg   = parseFloat(heroData?.dailyAvg  || 0)
+  const elapsed    = heroData?.elapsedDays || 1
+  const isLegacy   = !!heroData?.isLegacy
+  const deltaPct   = heroData?.deltaPct ?? null
   const activeCount = parseInt(invStats?.active_count || 0)
   const activeValue = parseFloat(invStats?.active_value || 0)
 
@@ -72,13 +81,17 @@ export function KpiRow({ heroData, invStats, selYear }) {
 
   return `
     <div class="kpi-grid">
-      ${kpiCard({ label: 'Umsatz',        value: fmt(calcBasis),    sub: umsatzSub })}
-      ${kpiCard({ label: 'Tages-Ø',       value: fmt(dailyAvg),     sub: `${fmtN(elapsed)} Tage` })}
-      ${kpiCard({ label: 'Aktive Artikel', value: fmtN(activeCount), sub: `Inventarwert: ${fmt(activeValue)}` })}
-      ${kpiCard({ label: 'Inventarwert',   value: fmt(activeValue),  sub: `${fmtN(activeCount)} Artikel` })}
+      ${kpiCard({ label: 'Umsatz',          value: fmt(calcBasis),   sub: umsatzSub })}
+      ${kpiCard({ label: 'Tages-Ø',         value: fmt(dailyAvg),    sub: `${fmtN(elapsed)} Tage` })}
+      ${kpiCard({ label: 'Aktive Artikel',   value: fmtN(activeCount),sub: `Inventarwert: ${fmt(activeValue)}` })}
+      ${kpiCard({ label: 'Inventarwert',     value: fmt(activeValue), sub: `${fmtN(activeCount)} Artikel` })}
     </div>
   `
 }
+
+// -------------------------------------------------------------------------
+// 2 — MonthlyBars
+// -------------------------------------------------------------------------
 
 export function MonthlyBars({ months, history, selYear }) {
   const rows = (months || []).filter(m => parseFloat(m.revenue || 0) > 0)
@@ -92,11 +105,11 @@ export function MonthlyBars({ months, history, selYear }) {
     `
   }
 
-  const maxVal    = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
-  const prevRow   = (history || []).find(r => parseInt(r.year) === selYear - 1)
+  const maxVal   = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
+  const prevRow  = (history || []).find(r => parseInt(r.year) === selYear - 1)
   const prevBasis = prevRow ? parseFloat(prevRow.calculation_basis || 0) : null
-  const refAvg    = (prevBasis !== null && prevBasis > 0) ? prevBasis / 12 : null
-  const refPct    = (refAvg !== null && maxVal > 0) ? (refAvg / maxVal) * 100 : null
+  const refAvg   = (prevBasis !== null && prevBasis > 0) ? prevBasis / 12 : null
+  const refPct   = (refAvg !== null && maxVal > 0) ? (refAvg / maxVal) * 100 : null
 
   const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
 
@@ -178,7 +191,11 @@ export function MonthlyBarsInit(container) {
   })
 }
 
-export function TopCustomers({ customers, year }) {
+// -------------------------------------------------------------------------
+// 3 — TopCustomers
+// -------------------------------------------------------------------------
+
+export function TopCustomers({ customers, year, onNavigate }) {
   const rows = [...(customers || [])]
     .sort((a, b) => parseFloat(b.calculation_basis_year || 0) - parseFloat(a.calculation_basis_year || 0))
 
@@ -217,7 +234,11 @@ export function TopCustomers({ customers, year }) {
   `
 }
 
-export function RecentSales({ recent }) {
+// -------------------------------------------------------------------------
+// 4 — RecentSales
+// -------------------------------------------------------------------------
+
+export function RecentSales({ recent, onNavigate }) {
   const rows = recent || []
 
   const items = rows.map(s => {
@@ -249,6 +270,10 @@ export function RecentSales({ recent }) {
   `
 }
 
+// -------------------------------------------------------------------------
+// CSS (einmalig injizieren)
+// -------------------------------------------------------------------------
+
 export function injectSectionsCSS() {
   if (document.getElementById('dash-sections-css')) return
   const style = document.createElement('style')
@@ -268,7 +293,9 @@ export function injectSectionsCSS() {
       box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
       padding: 14px 12px;
     }
-    @media (min-width: 640px) { .kpi-card { padding: 18px 20px; } }
+    @media (min-width: 640px) {
+      .kpi-card { padding: 18px 20px; }
+    }
     .kpi-label {
       color: var(--neu-text-muted);
       font-size: 11px;
@@ -283,16 +310,30 @@ export function injectSectionsCSS() {
       line-height: 1.2;
       margin-bottom: 4px;
     }
-    @media (min-width: 640px) { .kpi-value { font-size: 22px; } }
-    .kpi-sub { color: var(--neu-text-muted); font-size: 11px; }
+    @media (min-width: 640px) {
+      .kpi-value { font-size: 22px; }
+    }
+    .kpi-sub {
+      color: var(--neu-text-muted);
+      font-size: 11px;
+    }
     .dash-card {
       background: var(--neu-bg);
       border-radius: var(--neu-radius-card);
       box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
       padding: 18px 20px;
     }
-    .section-title { color: var(--neu-text-strong); font-size: 13px; font-weight: 500; margin-bottom: 16px; }
-    .empty-hint { color: var(--neu-text-muted); font-size: 13px; padding: 16px 0; }
+    .section-title {
+      color: var(--neu-text-strong);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+    .empty-hint {
+      color: var(--neu-text-muted);
+      font-size: 13px;
+      padding: 16px 0;
+    }
     .link-btn {
       background: none;
       border: none;
@@ -305,34 +346,132 @@ export function injectSectionsCSS() {
       transition: color 0.15s ease;
     }
     .link-btn:hover { color: var(--neu-accent-dark); }
-    .bars-wrap { position: relative; padding-right: 40px; }
-    .bars-inner { display: flex; align-items: flex-end; gap: 6px; height: 140px; position: relative; }
-    @media (min-width: 640px) { .bars-inner { height: 180px; gap: 8px; } }
-    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; cursor: default; position: relative; }
-    .bar-track {
-      width: 100%; flex: 1; border-radius: 6px;
-      box-shadow: inset 4px 4px 10px var(--neu-shadow-dark), inset -4px -4px 10px var(--neu-shadow-light);
-      position: relative; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end;
+    .bars-wrap {
+      position: relative;
+      padding-right: 40px;
     }
-    .bar-fill { width: 100%; background: linear-gradient(180deg, #34d399, #14b8a6); border-radius: 4px; min-height: 2px; transition: height 0.3s ease; }
-    .bar-ref { position: absolute; left: -2px; right: -2px; height: 1.5px; background: var(--neu-text-muted); border-top: 1.5px dashed var(--neu-text-muted); pointer-events: none; }
-    .bar-ref-label { position: absolute; right: 0; font-size: 10px; color: var(--neu-text-muted); white-space: nowrap; pointer-events: none; }
-    .bar-name { color: var(--neu-text-muted); font-size: 10px; margin-top: 4px; text-align: center; }
+    .bars-inner {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 140px;
+      position: relative;
+    }
+    @media (min-width: 640px) {
+      .bars-inner { height: 180px; gap: 8px; }
+    }
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      cursor: default;
+      position: relative;
+    }
+    .bar-track {
+      width: 100%;
+      flex: 1;
+      border-radius: 6px;
+      box-shadow: inset 4px 4px 10px var(--neu-shadow-dark), inset -4px -4px 10px var(--neu-shadow-light);
+      position: relative;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .bar-fill {
+      width: 100%;
+      background: linear-gradient(180deg, #34d399, #14b8a6);
+      border-radius: 4px;
+      min-height: 2px;
+      transition: height 0.3s ease;
+    }
+    .bar-ref {
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      height: 1.5px;
+      background: var(--neu-text-muted);
+      border-top: 1.5px dashed var(--neu-text-muted);
+      pointer-events: none;
+    }
+    .bar-ref-label {
+      position: absolute;
+      right: 0;
+      font-size: 10px;
+      color: var(--neu-text-muted);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .bar-name {
+      color: var(--neu-text-muted);
+      font-size: 10px;
+      margin-top: 4px;
+      text-align: center;
+    }
     .bar-tooltip {
       background: var(--neu-bg);
       border-radius: var(--neu-radius-sm);
       box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
-      font-size: 12px; padding: 6px 12px; pointer-events: none; position: fixed; white-space: nowrap; z-index: 1000;
+      font-size: 12px;
+      padding: 6px 12px;
+      pointer-events: none;
+      position: fixed;
+      white-space: nowrap;
+      z-index: 1000;
     }
     .customer-list { display: flex; flex-direction: column; gap: 10px; }
     .customer-row { display: flex; align-items: center; gap: 10px; }
     .customer-avatar {
       border-radius: 50%;
       box-shadow: 3px 3px 7px var(--neu-shadow-dark), -3px -3px 7px var(--neu-shadow-light);
-      flex-shrink: 0; font-size: 11px; font-weight: 500; height: 34px; line-height: 34px; text-align: center; width: 34px;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 500;
+      height: 34px;
+      line-height: 34px;
+      text-align: center;
+      width: 34px;
     }
     .customer-info { flex: 1; min-width: 0; }
-    .customer-name { color: var(--neu-text-strong); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .customer-name {
+      color: var(--neu-text-strong);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .customer-meta { color: var(--neu-text-muted); font-size: 11px; margin-top: 2px; }
     .customer-nums { text-align: right; flex-shrink: 0; }
-    .customer-basis { color:
+    .customer-basis { color: var(--neu-text-strong); font-size: 13px; font-weight: 500; }
+    .customer-saldo { font-size: 11px; margin-top: 2px; }
+    .sale-list { display: flex; flex-direction: column; gap: 10px; }
+    .sale-row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto auto;
+      align-items: center;
+      gap: 8px;
+    }
+    .sale-inv {
+      color: var(--neu-text-muted);
+      font-family: monospace;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sale-desc {
+      color: var(--neu-text);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sale-plat { font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .sale-nums { text-align: right; }
+    .sale-basis { color: var(--neu-text-strong); font-size: 13px; font-weight: 500; }
+    .sale-op { color: var(--neu-text-muted); font-size: 11px; margin-top: 2px; }
+  `
+  document.head.appendChild(style)
+}
