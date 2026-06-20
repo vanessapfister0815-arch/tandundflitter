@@ -108,31 +108,50 @@ export function MonthlyBars({ months, history, selYear }) {
     `
   }
 
-  const maxVal = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
+  const maxVal    = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
+  const prevRow   = (history || []).find(r => parseInt(r.year) === selYear - 1)
+  const prevBasis = prevRow ? parseFloat(prevRow.calculation_basis || 0) : null
+  const refAvg    = prevBasis !== null && prevBasis > 0 ? prevBasis / 12 : null
+  const refPct    = refAvg !== null && maxVal > 0 ? Math.min((refAvg / maxVal) * 100, 100) : null
 
   const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
 
   const bars = rows.map((m, i) => {
     const val  = parseFloat(m.revenue || 0)
     const pct  = maxVal > 0 ? (val / maxVal) * 100 : 0
-    const mIdx = parseInt(m.month || i + 1) - 1
-    const name = MONTH_NAMES[mIdx] || `M${m.month}`
+    // month kann "1", "01" oder "2026-01" sein
+    const rawMonth = String(m.month || '')
+    const mNum = rawMonth.includes('-')
+      ? parseInt(rawMonth.split('-')[1], 10)
+      : parseInt(rawMonth, 10)
+    const mIdx = isNaN(mNum) ? i : mNum - 1
+    const name = MONTH_NAMES[mIdx] ?? `M${m.month}`
+
+    const refLine = refPct !== null
+      ? `<div class="hbar-ref" style="left:${refPct}%"></div>`
+      : ''
 
     return `
       <div class="hbar-row">
         <div class="hbar-month">${name}</div>
         <div class="hbar-track">
           <div class="hbar-fill" style="width:${pct}%"></div>
+          ${refLine}
         </div>
         <div class="hbar-val">${fmt(val)}</div>
       </div>
     `
   }).join('')
 
+  const refLabel = refPct !== null
+    ? `<div class="hbar-ref-legend">— Ø VJ ${fmt(refAvg)}</div>`
+    : ''
+
   return `
     <div class="dash-card">
       <div class="section-title">Monatliche Entwicklung ${selYear}</div>
       <div class="hbars-wrap">${bars}</div>
+      ${refLabel}
     </div>
   `
 }
@@ -321,17 +340,36 @@ export function injectSectionsCSS() {
     }
     .hbar-track {
       flex: 1;
-      height: 8px;
+      height: 10px;
       border-radius: 50px;
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light);
-      overflow: hidden;
+      box-shadow: inset 3px 3px 7px var(--neu-shadow-dark), inset -3px -3px 7px var(--neu-shadow-light);
+      overflow: visible;
+      position: relative;
     }
     .hbar-fill {
+      position: absolute;
+      top: 0; left: 0;
       height: 100%;
       border-radius: 50px;
       background: linear-gradient(90deg, #14b8a6, #34d399);
       min-width: 2px;
       transition: width 0.35s ease;
+    }
+    .hbar-ref {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      background: var(--neu-text-muted);
+      border-radius: 2px;
+      pointer-events: none;
+      opacity: 0.55;
+    }
+    .hbar-ref-legend {
+      color: var(--neu-text-muted);
+      font-size: 10px;
+      margin-top: 10px;
+      text-align: right;
     }
     .hbar-val {
       color: var(--neu-text-muted);
