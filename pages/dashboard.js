@@ -1,5 +1,6 @@
 // pages/dashboard.js — Container, State, Load, Render
 // Tand & Flitter · v2.0 · 2026-06-20
+// Umgeschrieben von window-Globals auf native ES-Module.
 
 import { sbRpc, sbQuery } from '../core/supabase.js'
 import {
@@ -10,6 +11,10 @@ import {
   RecentSales,
   injectSectionsCSS,
 } from './dashboard-sections.js'
+
+// -------------------------------------------------------------------------
+// State
+// -------------------------------------------------------------------------
 
 const state = {
   selYear:     new Date().getFullYear(),
@@ -25,6 +30,10 @@ const state = {
   baseError:   null,
   yearError:   null,
 }
+
+// -------------------------------------------------------------------------
+// Daten laden
+// -------------------------------------------------------------------------
 
 async function loadBase() {
   state.baseLoading = true
@@ -76,6 +85,10 @@ async function loadYear(year) {
   }
 }
 
+// -------------------------------------------------------------------------
+// Hero-Berechnung
+// -------------------------------------------------------------------------
+
 function buildHeroData() {
   const { salesStats, history, selYear } = state
   const today       = new Date()
@@ -116,6 +129,10 @@ function buildHeroData() {
   return { calcBasis, dailyAvg, isLegacy: false, elapsedDays, deltaPct }
 }
 
+// -------------------------------------------------------------------------
+// Render
+// -------------------------------------------------------------------------
+
 function renderSpinner(el) {
   el.innerHTML = `<div class="dash-spinner">Laden…</div>`
 }
@@ -135,17 +152,20 @@ function renderContent(root) {
 
   main.innerHTML = ''
 
+  // 1 — KPI-Reihe
   const kpiEl = document.createElement('div')
   kpiEl.className = 'dash-section'
   kpiEl.innerHTML = KpiRow({ heroData, invStats: state.invStats, selYear: state.selYear })
   main.appendChild(kpiEl)
 
+  // 2 — Monatliche Entwicklung
   const barsEl = document.createElement('div')
   barsEl.className = 'dash-section'
   barsEl.innerHTML = MonthlyBars({ months: state.months, history: state.history, selYear: state.selYear })
   MonthlyBarsInit(barsEl)
   main.appendChild(barsEl)
 
+  // 3 + 4 — Kunden & Letzte Verkäufe
   const gridEl = document.createElement('div')
   gridEl.className = 'dash-section bottom-grid'
 
@@ -192,6 +212,10 @@ function renderNav(root) {
     renderContent(root)
   })
 }
+
+// -------------------------------------------------------------------------
+// CSS (Layout + Feedback)
+// -------------------------------------------------------------------------
 
 function injectLayoutCSS() {
   if (document.getElementById('dash-layout-css')) return
@@ -276,6 +300,10 @@ function injectLayoutCSS() {
   `
   document.head.appendChild(style)
 }
+
+// -------------------------------------------------------------------------
+// Mount (Default Export)
+// -------------------------------------------------------------------------
 
 export default async function PageDashboard(root) {
   injectLayoutCSS()
