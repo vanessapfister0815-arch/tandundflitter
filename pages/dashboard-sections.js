@@ -1,6 +1,9 @@
 // pages/dashboard-sections.js — KpiRow · MonthlyBars · TopCustomers · RecentSales
-// Tand & Flitter · v2.0 · 2026-06-20
-// Umgeschrieben von window.DashboardSections auf native ES-Module.
+// Tand & Flitter · v2.1 · 2026-06-20
+// Änderungen v2.1:
+//   - MonthlyBars: vertikale Säulen → horizontale Balken (Mockup-Layout)
+//   - TopCustomers: auf 10 Einträge begrenzt, "offen"-Badge entfernt
+//   - RecentSales: erweiterter Beschreibungs-Fallback (article_description_override → description → article_description → '—')
 
 // -------------------------------------------------------------------------
 // Hilfsfunktionen
@@ -62,11 +65,11 @@ function kpiCard({ label, value, sub }) {
 // -------------------------------------------------------------------------
 
 export function KpiRow({ heroData, invStats, selYear }) {
-  const calcBasis  = parseFloat(heroData?.calcBasis || 0)
-  const dailyAvg   = parseFloat(heroData?.dailyAvg  || 0)
-  const elapsed    = heroData?.elapsedDays || 1
-  const isLegacy   = !!heroData?.isLegacy
-  const deltaPct   = heroData?.deltaPct ?? null
+  const calcBasis   = parseFloat(heroData?.calcBasis || 0)
+  const dailyAvg    = parseFloat(heroData?.dailyAvg  || 0)
+  const elapsed     = heroData?.elapsedDays || 1
+  const isLegacy    = !!heroData?.isLegacy
+  const deltaPct    = heroData?.deltaPct ?? null
   const activeCount = parseInt(invStats?.active_count || 0)
   const activeValue = parseFloat(invStats?.active_value || 0)
 
@@ -81,16 +84,16 @@ export function KpiRow({ heroData, invStats, selYear }) {
 
   return `
     <div class="kpi-grid">
-      ${kpiCard({ label: 'Umsatz',          value: fmt(calcBasis),   sub: umsatzSub })}
-      ${kpiCard({ label: 'Tages-Ø',         value: fmt(dailyAvg),    sub: `${fmtN(elapsed)} Tage` })}
-      ${kpiCard({ label: 'Aktive Artikel',   value: fmtN(activeCount),sub: `Inventarwert: ${fmt(activeValue)}` })}
-      ${kpiCard({ label: 'Inventarwert',     value: fmt(activeValue), sub: `${fmtN(activeCount)} Artikel` })}
+      ${kpiCard({ label: 'Umsatz',          value: fmt(calcBasis),    sub: umsatzSub })}
+      ${kpiCard({ label: 'Tages-Ø',         value: fmt(dailyAvg),     sub: `${fmtN(elapsed)} Tage` })}
+      ${kpiCard({ label: 'Aktive Artikel',   value: fmtN(activeCount), sub: `Inventarwert: ${fmt(activeValue)}` })}
+      ${kpiCard({ label: 'Inventarwert',     value: fmt(activeValue),  sub: `${fmtN(activeCount)} Artikel` })}
     </div>
   `
 }
 
 // -------------------------------------------------------------------------
-// 2 — MonthlyBars
+// 2 — MonthlyBars (horizontal, Mockup-Layout)
 // -------------------------------------------------------------------------
 
 export function MonthlyBars({ months, history, selYear }) {
@@ -99,127 +102,73 @@ export function MonthlyBars({ months, history, selYear }) {
   if (!rows.length) {
     return `
       <div class="dash-card">
-        <div class="section-title">Monatliche Entwicklung</div>
+        <div class="section-title">Monatliche Entwicklung ${selYear}</div>
         <div class="empty-hint">Keine Verkäufe in ${selYear}</div>
       </div>
     `
   }
 
-  const maxVal   = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
-  const prevRow  = (history || []).find(r => parseInt(r.year) === selYear - 1)
-  const prevBasis = prevRow ? parseFloat(prevRow.calculation_basis || 0) : null
-  const refAvg   = (prevBasis !== null && prevBasis > 0) ? prevBasis / 12 : null
-  const refPct   = (refAvg !== null && maxVal > 0) ? (refAvg / maxVal) * 100 : null
+  const maxVal = Math.max(...rows.map(m => parseFloat(m.revenue || 0)))
 
   const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
 
   const bars = rows.map((m, i) => {
-    const val   = parseFloat(m.revenue || 0)
-    const pct   = maxVal > 0 ? (val / maxVal) * 100 : 0
-    const mIdx  = parseInt(m.month || i + 1) - 1
-    const name  = MONTH_NAMES[mIdx] || `M${m.month}`
-
-    let deltaEur = null, deltaPctM = null
-    if (refAvg !== null) {
-      deltaEur  = val - refAvg
-      deltaPctM = refAvg > 0 ? (deltaEur / refAvg) * 100 : null
-    }
+    const val  = parseFloat(m.revenue || 0)
+    const pct  = maxVal > 0 ? (val / maxVal) * 100 : 0
+    const mIdx = parseInt(m.month || i + 1) - 1
+    const name = MONTH_NAMES[mIdx] || `M${m.month}`
 
     return `
-      <div class="bar-col"
-        data-val="${val}"
-        data-delta-eur="${deltaEur !== null ? deltaEur.toFixed(2) : ''}"
-        data-delta-pct="${deltaPctM !== null ? deltaPctM.toFixed(1) : ''}"
-      >
-        <div class="bar-track">
-          <div class="bar-fill" style="height:${pct}%"></div>
-          ${refPct !== null ? `<div class="bar-ref" style="bottom:${refPct}%"></div>` : ''}
+      <div class="hbar-row">
+        <div class="hbar-month">${name}</div>
+        <div class="hbar-track">
+          <div class="hbar-fill" style="width:${pct}%"></div>
         </div>
-        <div class="bar-name">${name}</div>
+        <div class="hbar-val">${fmt(val)}</div>
       </div>
     `
   }).join('')
 
-  const refLabel = refPct !== null
-    ? `<div class="bar-ref-label" style="bottom:calc(${refPct}% + 4px)">Ø VJ</div>`
-    : ''
-
   return `
     <div class="dash-card">
       <div class="section-title">Monatliche Entwicklung ${selYear}</div>
-      <div class="bars-wrap">
-        <div class="bars-inner">${bars}</div>
-        ${refLabel}
-      </div>
+      <div class="hbars-wrap">${bars}</div>
     </div>
-    <div id="barTooltip" class="bar-tooltip" style="display:none;"></div>
   `
 }
 
-export function MonthlyBarsInit(container) {
-  const tooltip = document.getElementById('barTooltip')
-  if (!tooltip) return
-
-  function showTip(e, col) {
-    const deltaEur = parseFloat(col.dataset.deltaEur || 'NaN')
-    const deltaPct = parseFloat(col.dataset.deltaPct || 'NaN')
-    if (isNaN(deltaEur)) { tooltip.style.display = 'none'; return }
-
-    const sign  = deltaEur >= 0 ? '+' : ''
-    const color = deltaEur >= 0 ? 'var(--neu-green)' : 'var(--neu-red)'
-    tooltip.innerHTML = `
-      <span style="color:${color};font-weight:500;">${sign}${fmt(deltaEur)}</span>
-      ${!isNaN(deltaPct)
-        ? `<span style="color:${color};margin-left:8px;">(${sign}${deltaPct.toFixed(1)} %)</span>`
-        : ''}
-    `
-    tooltip.style.display = 'block'
-    moveTip(e)
-  }
-
-  function moveTip(e) {
-    tooltip.style.left = (e.clientX + 12) + 'px'
-    tooltip.style.top  = (e.clientY - 36) + 'px'
-  }
-
-  function hideTip() { tooltip.style.display = 'none' }
-
-  container.querySelectorAll('.bar-col').forEach(col => {
-    col.addEventListener('mouseenter', e => showTip(e, col))
-    col.addEventListener('mousemove', moveTip)
-    col.addEventListener('mouseleave', hideTip)
-  })
-}
+// MonthlyBarsInit bleibt exportiert, macht bei horizontalen Balken nichts
+export function MonthlyBarsInit(_container) {}
 
 // -------------------------------------------------------------------------
-// 3 — TopCustomers
+// 3 — TopCustomers (max. 10, kein "offen"-Label)
 // -------------------------------------------------------------------------
 
 export function TopCustomers({ customers, year, onNavigate }) {
   const rows = [...(customers || [])]
     .sort((a, b) => parseFloat(b.calculation_basis_year || 0) - parseFloat(a.calculation_basis_year || 0))
+    .slice(0, 10)
 
   const items = rows.map((c, i) => {
     const col   = AVATAR_COLORS[i % AVATAR_COLORS.length]
     const basis = parseFloat(c.calculation_basis_year || 0)
     const count = parseInt(c.sales_count || 0)
     const avg   = count > 0 ? basis / count : 0
-    const saldo = parseFloat(c.open_balance || 0)
+
+    // Namensfeld: get_customer_summary kann 'customer_name', 'name' oder 'full_name' liefern
+    const name = c.customer_name || c.name || c.full_name || '—'
 
     return `
       <div class="customer-row">
         <div class="customer-avatar" style="background:${col.bg};color:${col.text};">
-          ${initials(c.customer_name)}
+          ${initials(name)}
         </div>
         <div class="customer-info">
-          <div class="customer-name">${c.customer_name || '—'}</div>
+          <div class="customer-name">${name}</div>
           <div class="customer-meta">${fmtN(count)} Verkäufe · Ø ${fmt(avg)}</div>
         </div>
         <div class="customer-nums">
           <div class="customer-basis">${fmt(basis)}</div>
-          <div class="customer-saldo" style="color:${saldo > 0 ? 'var(--neu-amber)' : 'var(--neu-text-muted)'}">
-            ${saldo > 0 ? fmt(saldo) + ' offen' : '—'}
-          </div>
         </div>
       </div>
     `
@@ -246,7 +195,12 @@ export function RecentSales({ recent, onNavigate }) {
     const basis = parseFloat(s.calculation_basis || 0)
     const op    = parseFloat(s.operator_fee || 0)
     const inv   = s.inventory_number || '—'
-    const desc  = s.article_description_override || s.description || '—'
+    // Alle möglichen Beschreibungsfelder die vw_sales_detail liefern kann
+    const desc  = s.article_description_override
+               || s.description
+               || s.article_description
+               || s.title
+               || '—'
 
     return `
       <div class="sale-row">
@@ -346,81 +300,48 @@ export function injectSectionsCSS() {
       transition: color 0.15s ease;
     }
     .link-btn:hover { color: var(--neu-accent-dark); }
-    .bars-wrap {
-      position: relative;
-      padding-right: 40px;
-    }
-    .bars-inner {
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
-      height: 140px;
-      position: relative;
-    }
-    @media (min-width: 640px) {
-      .bars-inner { height: 180px; gap: 8px; }
-    }
-    .bar-col {
-      flex: 1;
+
+    /* ── Horizontale Monatsbalken ── */
+    .hbars-wrap {
       display: flex;
       flex-direction: column;
+      gap: 10px;
+    }
+    .hbar-row {
+      display: flex;
       align-items: center;
-      height: 100%;
-      cursor: default;
-      position: relative;
+      gap: 10px;
     }
-    .bar-track {
-      width: 100%;
+    .hbar-month {
+      color: var(--neu-text-muted);
+      font-size: 11px;
+      text-align: right;
+      width: 26px;
+      flex-shrink: 0;
+    }
+    .hbar-track {
       flex: 1;
-      border-radius: 6px;
-      box-shadow: inset 4px 4px 10px var(--neu-shadow-dark), inset -4px -4px 10px var(--neu-shadow-light);
-      position: relative;
-      overflow: visible;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
+      height: 8px;
+      border-radius: 50px;
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light);
+      overflow: hidden;
     }
-    .bar-fill {
-      width: 100%;
-      background: linear-gradient(180deg, #34d399, #14b8a6);
-      border-radius: 4px;
-      min-height: 2px;
-      transition: height 0.3s ease;
+    .hbar-fill {
+      height: 100%;
+      border-radius: 50px;
+      background: linear-gradient(90deg, #14b8a6, #34d399);
+      min-width: 2px;
+      transition: width 0.35s ease;
     }
-    .bar-ref {
-      position: absolute;
-      left: -2px;
-      right: -2px;
-      height: 1.5px;
-      background: var(--neu-text-muted);
-      border-top: 1.5px dashed var(--neu-text-muted);
-      pointer-events: none;
-    }
-    .bar-ref-label {
-      position: absolute;
-      right: 0;
-      font-size: 10px;
+    .hbar-val {
       color: var(--neu-text-muted);
-      white-space: nowrap;
-      pointer-events: none;
+      font-size: 11px;
+      text-align: right;
+      width: 72px;
+      flex-shrink: 0;
     }
-    .bar-name {
-      color: var(--neu-text-muted);
-      font-size: 10px;
-      margin-top: 4px;
-      text-align: center;
-    }
-    .bar-tooltip {
-      background: var(--neu-bg);
-      border-radius: var(--neu-radius-sm);
-      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
-      font-size: 12px;
-      padding: 6px 12px;
-      pointer-events: none;
-      position: fixed;
-      white-space: nowrap;
-      z-index: 1000;
-    }
+
+    /* ── Kunden ── */
     .customer-list { display: flex; flex-direction: column; gap: 10px; }
     .customer-row { display: flex; align-items: center; gap: 10px; }
     .customer-avatar {
@@ -445,7 +366,8 @@ export function injectSectionsCSS() {
     .customer-meta { color: var(--neu-text-muted); font-size: 11px; margin-top: 2px; }
     .customer-nums { text-align: right; flex-shrink: 0; }
     .customer-basis { color: var(--neu-text-strong); font-size: 13px; font-weight: 500; }
-    .customer-saldo { font-size: 11px; margin-top: 2px; }
+
+    /* ── Letzte Verkäufe ── */
     .sale-list { display: flex; flex-direction: column; gap: 10px; }
     .sale-row {
       display: grid;
