@@ -1,9 +1,10 @@
 /**
  * pages/dashboard.js — Dashboard-Page
- * Tand & Flitter · v2.1 · 2026-06-20
+ * Tand & Flitter · v2.2 · 2026-06-20
  *
  * Default-Export: PageDashboard(root) — wird von layout.js aufgerufen.
- * Nav und Header kommen von layout.js — hier nur Page-Content.
+ * sbQuery(fn) erwartet eine Funktion die sb als Argument bekommt.
+ * sbRpc(name, params) gibt data direkt zurück, wirft bei Fehler.
  */
 
 import { KpiRow, MonthlyBars, MonthlyBarsInit, TopCustomers, RecentSales, injectSectionsCSS } from './dashboard-sections.js'
@@ -12,22 +13,22 @@ import { PlatformDonut }                                                        
 import { sbRpc, sbQuery }                                                                       from '../core/supabase.js'
 
 // ---------------------------------------------------------------------------
-// State (Modul-Scope — bleibt beim Jahreswechsel erhalten)
+// State
 // ---------------------------------------------------------------------------
 
 const state = {
-  selYear:     new Date().getFullYear(),
-  invStats:    null,
-  vintages:    null,
-  history:     null,
-  salesStats:  null,
-  months:      null,
-  customers:   null,
-  recent:      null,
-  platRows:    null,
-  baseLoaded:  false,
-  baseError:   null,
-  yearError:   null,
+  selYear:    new Date().getFullYear(),
+  invStats:   null,
+  vintages:   null,
+  history:    null,
+  salesStats: null,
+  months:     null,
+  customers:  null,
+  recent:     null,
+  platRows:   null,
+  baseLoaded: false,
+  baseError:  null,
+  yearError:  null,
 }
 
 // ---------------------------------------------------------------------------
@@ -61,16 +62,23 @@ async function loadYear(year) {
       sbRpc('get_sales_stats',      { p_year: y }),
       sbRpc('get_monthly_stats',    { p_year: y }),
       sbRpc('get_customer_summary', { p_year: y }),
-      sbQuery('vw_sales_detail', {
-        filters: ['status=eq.successful', `sale_date=gte.${y}-01-01`, `sale_date=lt.${y1}-01-01`],
-        order:   'sale_date.desc',
-        limit:   10,
-      }),
-      sbQuery('vw_sales_detail', {
-        select:  'platform,calculation_basis',
-        filters: ['status=eq.successful', `sale_date=gte.${y}-01-01`, `sale_date=lt.${y1}-01-01`],
-        limit:   5000,
-      }),
+      sbQuery(sb => sb
+        .from('vw_sales_detail')
+        .select('*')
+        .eq('status', 'successful')
+        .gte('sale_date', `${y}-01-01`)
+        .lt('sale_date', `${y1}-01-01`)
+        .order('sale_date', { ascending: false })
+        .limit(10)
+      ),
+      sbQuery(sb => sb
+        .from('vw_sales_detail')
+        .select('platform,calculation_basis')
+        .eq('status', 'successful')
+        .gte('sale_date', `${y}-01-01`)
+        .lt('sale_date', `${y1}-01-01`)
+        .limit(5000)
+      ),
     ])
     state.salesStats = salesStats
     state.months     = months
@@ -91,9 +99,9 @@ function buildHeroData() {
   const today       = new Date()
   const currentYear = today.getFullYear()
 
-  const hasLiveSales = salesStats && parseFloat(salesStats.ytd_revenue || 0) > 0
-  const legacyRow    = (history || []).find(r => parseInt(r.year) === selYear && r.source === 'legacy')
-  const isLegacy     = !hasLiveSales && !!legacyRow
+  const hasLiveSales  = salesStats && parseFloat(salesStats.ytd_revenue || 0) > 0
+  const legacyRow     = (history || []).find(r => parseInt(r.year) === selYear && r.source === 'legacy')
+  const isLegacy      = !hasLiveSales && !!legacyRow
 
   if (isLegacy) {
     return {
@@ -121,15 +129,15 @@ function buildHeroData() {
 }
 
 // ---------------------------------------------------------------------------
-// Render
+// Render-Helpers
 // ---------------------------------------------------------------------------
 
-function renderSpinner(main) {
-  main.innerHTML = `<div class="dash-spinner">Laden…</div>`
+function renderSpinner(el) {
+  el.innerHTML = `<div class="dash-spinner">Laden…</div>`
 }
 
-function renderError(main, msg) {
-  main.innerHTML = `<div class="dash-error">Fehler: ${msg}</div>`
+function renderError(el, msg) {
+  el.innerHTML = `<div class="dash-error">Fehler: ${msg}</div>`
 }
 
 function renderYearSelect(root) {
@@ -152,6 +160,10 @@ function renderYearSelect(root) {
     renderContent(root)
   })
 }
+
+// ---------------------------------------------------------------------------
+// Content rendern
+// ---------------------------------------------------------------------------
 
 function renderContent(root) {
   const main = root.querySelector('#dashMain')
@@ -277,7 +289,7 @@ function injectDashboardCSS() {
 }
 
 // ---------------------------------------------------------------------------
-// Default Export — wird von layout.js mit (root) aufgerufen
+// Default Export
 // ---------------------------------------------------------------------------
 
 export default async function PageDashboard(root) {
