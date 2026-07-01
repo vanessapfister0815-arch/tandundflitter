@@ -1,9 +1,7 @@
 // pages/dashboard-sections.js — KpiRow · MonthlyBars · TopCustomers · RecentSales
-// Tand & Flitter · v2.1 · 2026-06-20
-// Änderungen v2.1:
-//   - MonthlyBars: vertikale Säulen → horizontale Balken (Mockup-Layout)
-//   - TopCustomers: auf 10 Einträge begrenzt, "offen"-Badge entfernt
-//   - RecentSales: erweiterter Beschreibungs-Fallback (article_description_override → description → article_description → '—')
+// Tand & Flitter · v2.3 · 2026-07-01
+// v2.3: KPI ohne Sub-Zeile · MonthlyBars + Umsatz/Abweichung/Kumuliert-Spalten
+//       TopCustomers + 50%-Zeile · "Alle Kunden" als echter Link
 
 // -------------------------------------------------------------------------
 // Hilfsfunktionen
@@ -21,6 +19,14 @@ function fmtN(n) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
+}
+
+function fmtDelta(n) {
+  const sign = n >= 0 ? '+' : ''
+  return sign + parseFloat(n).toLocaleString('de-DE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) + ' €'
 }
 
 function initials(name) {
@@ -50,50 +56,37 @@ function platformColor(name) {
   return PLATFORM_COLORS[name] || '#9898b0'
 }
 
-function kpiCard({ label, value, sub }) {
-  return `
-    <div class="kpi-card">
-      <div class="kpi-label">${label}</div>
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-sub">${sub}</div>
-    </div>
-  `
-}
-
 // -------------------------------------------------------------------------
-// 1 — KpiRow
+// 1 — KpiRow (nur Kennzahl, keine Sub-Zeile)
 // -------------------------------------------------------------------------
 
-export function KpiRow({ heroData, invStats, selYear }) {
+export function KpiRow({ heroData, invStats }) {
   const calcBasis   = parseFloat(heroData?.calcBasis || 0)
   const dailyAvg    = parseFloat(heroData?.dailyAvg  || 0)
-  const elapsed     = heroData?.elapsedDays || 1
-  const isLegacy    = !!heroData?.isLegacy
-  const deltaPct    = heroData?.deltaPct ?? null
   const activeCount = parseInt(invStats?.active_count || 0)
   const activeValue = parseFloat(invStats?.active_value || 0)
 
-  let umsatzSub
-  if (!isLegacy && deltaPct !== null) {
-    const sign  = deltaPct >= 0 ? '+' : ''
-    const color = deltaPct >= 0 ? 'var(--neu-green)' : 'var(--neu-red)'
-    umsatzSub = `<span style="color:${color};font-weight:500;">${sign}${deltaPct.toFixed(1)} %</span> vs. Vorjahr`
-  } else {
-    umsatzSub = `${fmtN(elapsed)} Tage`
+  function card(label, value) {
+    return `
+      <div class="kpi-card">
+        <div class="kpi-label">${label}</div>
+        <div class="kpi-value">${value}</div>
+      </div>
+    `
   }
 
   return `
     <div class="kpi-grid">
-      ${kpiCard({ label: 'Umsatz',          value: fmt(calcBasis),    sub: umsatzSub })}
-      ${kpiCard({ label: 'Tages-Ø',         value: fmt(dailyAvg),     sub: `${fmtN(elapsed)} Tage` })}
-      ${kpiCard({ label: 'Aktive Artikel',   value: fmtN(activeCount), sub: `Inventarwert: ${fmt(activeValue)}` })}
-      ${kpiCard({ label: 'Inventarwert',     value: fmt(activeValue),  sub: `${fmtN(activeCount)} Artikel` })}
+      ${card('Umsatz',        fmt(calcBasis))}
+      ${card('Tages-Ø',      fmt(dailyAvg))}
+      ${card('Aktive Artikel', fmtN(activeCount))}
+      ${card('Inventarwert', fmt(activeValue))}
     </div>
   `
 }
 
 // -------------------------------------------------------------------------
-// 2 — MonthlyBars (horizontal, Mockup-Layout)
+// 2 — MonthlyBars mit Umsatz · Abweichung · Kumulierte Abweichung
 // -------------------------------------------------------------------------
 
 export function MonthlyBars({ months, history, selYear }) {
@@ -116,20 +109,32 @@ export function MonthlyBars({ months, history, selYear }) {
 
   const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
 
+  let cumDelta = 0
+
   const bars = rows.map((m, i) => {
-    const val  = parseFloat(m.revenue || 0)
-    const pct  = maxVal > 0 ? (val / maxVal) * 100 : 0
-    // month kann "1", "01" oder "2026-01" sein
+    const val      = parseFloat(m.revenue || 0)
+    const pct      = maxVal > 0 ? (val / maxVal) * 100 : 0
     const rawMonth = String(m.month || '')
-    const mNum = rawMonth.includes('-')
+    const mNum     = rawMonth.includes('-')
       ? parseInt(rawMonth.split('-')[1], 10)
       : parseInt(rawMonth, 10)
-    const mIdx = isNaN(mNum) ? i : mNum - 1
-    const name = MONTH_NAMES[mIdx] ?? `M${m.month}`
+    const mIdx     = isNaN(mNum) ? i : mNum - 1
+    const name     = MONTH_NAMES[mIdx] ?? `M${m.month}`
 
     const refLine = refPct !== null
       ? `<div class="hbar-ref" style="left:${refPct}%"></div>`
       : ''
+
+    let deltaCell = ''
+    let cumCell   = ''
+    if (refAvg !== null) {
+      const delta = val - refAvg
+      cumDelta   += delta
+      const dCol  = delta  >= 0 ? 'var(--neu-green)' : 'var(--neu-red)'
+      const cCol  = cumDelta >= 0 ? 'var(--neu-green)' : 'var(--neu-red)'
+      deltaCell = `<div class="hbar-delta" style="color:${dCol}">${fmtDelta(delta)}</div>`
+      cumCell   = `<div class="hbar-cum"   style="color:${cCol}">${fmtDelta(cumDelta)}</div>`
+    }
 
     return `
       <div class="hbar-row">
@@ -139,31 +144,43 @@ export function MonthlyBars({ months, history, selYear }) {
           ${refLine}
         </div>
         <div class="hbar-val">${fmt(val)}</div>
+        ${deltaCell}
+        ${cumCell}
       </div>
     `
   }).join('')
 
-  const refLabel = refPct !== null
-    ? `<div class="hbar-ref-legend">— Ø VJ ${fmt(refAvg)}</div>`
+  const header = refAvg !== null ? `
+    <div class="hbar-row hbar-header">
+      <div class="hbar-month"></div>
+      <div class="hbar-track-spacer"></div>
+      <div class="hbar-val hbar-col-head">Umsatz</div>
+      <div class="hbar-delta hbar-col-head">Abw. VJ-Ø</div>
+      <div class="hbar-cum hbar-col-head">Kumuliert</div>
+    </div>
+  ` : ''
+
+  const refLabel = refAvg !== null
+    ? `<div class="hbar-ref-legend">— Ø ${selYear - 1}: ${fmt(refAvg)} / Monat</div>`
     : ''
 
   return `
     <div class="dash-card">
       <div class="section-title">Monatliche Entwicklung ${selYear}</div>
+      ${header}
       <div class="hbars-wrap">${bars}</div>
       ${refLabel}
     </div>
   `
 }
 
-// MonthlyBarsInit bleibt exportiert, macht bei horizontalen Balken nichts
 export function MonthlyBarsInit(_container) {}
 
 // -------------------------------------------------------------------------
-// 3 — TopCustomers (max. 10, kein "offen"-Label)
+// 3 — TopCustomers (max. 10, mit 50%-Zeile)
 // -------------------------------------------------------------------------
 
-export function TopCustomers({ customers, year, onNavigate }) {
+export function TopCustomers({ customers, year }) {
   const rows = [...(customers || [])]
     .sort((a, b) => parseFloat(b.calculation_basis_year || 0) - parseFloat(a.calculation_basis_year || 0))
     .slice(0, 10)
@@ -171,11 +188,10 @@ export function TopCustomers({ customers, year, onNavigate }) {
   const items = rows.map((c, i) => {
     const col   = AVATAR_COLORS[i % AVATAR_COLORS.length]
     const basis = parseFloat(c.calculation_basis_year || 0)
+    const half  = basis / 2
     const count = parseInt(c.sales_count || 0)
     const avg   = count > 0 ? basis / count : 0
-
-    // Namensfeld: get_customer_summary kann 'customer_name', 'name' oder 'full_name' liefern
-    const name = c.customer_name || c.name || c.full_name || '—'
+    const name  = c.customer_name || c.name || c.full_name || '—'
 
     return `
       <div class="customer-row">
@@ -188,6 +204,7 @@ export function TopCustomers({ customers, year, onNavigate }) {
         </div>
         <div class="customer-nums">
           <div class="customer-basis">${fmt(basis)}</div>
+          <div class="customer-half">${fmt(half)}</div>
         </div>
       </div>
     `
@@ -197,7 +214,7 @@ export function TopCustomers({ customers, year, onNavigate }) {
     <div class="dash-card">
       <div class="section-title">Top-Kunden ${year}</div>
       ${rows.length ? `<div class="customer-list">${items}</div>` : `<div class="empty-hint">Keine Daten</div>`}
-      <button class="link-btn" id="btn-all-customers">→ Alle Kunden</button>
+      <a class="link-btn" href="#/customers" id="btn-all-customers">→ Alle Kunden</a>
     </div>
   `
 }
@@ -206,7 +223,7 @@ export function TopCustomers({ customers, year, onNavigate }) {
 // 4 — RecentSales
 // -------------------------------------------------------------------------
 
-export function RecentSales({ recent, onNavigate }) {
+export function RecentSales({ recent }) {
   const rows = recent || []
 
   const items = rows.map(s => {
@@ -214,7 +231,6 @@ export function RecentSales({ recent, onNavigate }) {
     const basis = parseFloat(s.calculation_basis || 0)
     const op    = parseFloat(s.operator_fee || 0)
     const inv   = s.inventory_number || '—'
-    // Alle möglichen Beschreibungsfelder die vw_sales_detail liefern kann
     const desc  = s.article_description_override
                || s.description
                || s.article_description
@@ -238,13 +254,13 @@ export function RecentSales({ recent, onNavigate }) {
     <div class="dash-card">
       <div class="section-title">Letzte Verkäufe</div>
       ${rows.length ? `<div class="sale-list">${items}</div>` : `<div class="empty-hint">Keine Verkäufe</div>`}
-      <button class="link-btn" id="btn-all-sales">→ Alle Verkäufe</button>
+      <a class="link-btn" href="#/sales" id="btn-all-sales">→ Alle Verkäufe</a>
     </div>
   `
 }
 
 // -------------------------------------------------------------------------
-// CSS (einmalig injizieren)
+// CSS
 // -------------------------------------------------------------------------
 
 export function injectSectionsCSS() {
@@ -281,14 +297,9 @@ export function injectSectionsCSS() {
       font-size: 18px;
       font-weight: 500;
       line-height: 1.2;
-      margin-bottom: 4px;
     }
     @media (min-width: 640px) {
       .kpi-value { font-size: 22px; }
-    }
-    .kpi-sub {
-      color: var(--neu-text-muted);
-      font-size: 11px;
     }
     .dash-card {
       background: var(--neu-bg);
@@ -312,25 +323,27 @@ export function injectSectionsCSS() {
       border: none;
       color: var(--neu-accent);
       cursor: pointer;
+      display: inline-block;
       font-family: inherit;
       font-size: 12px;
       margin-top: 16px;
       padding: 0;
+      text-decoration: none;
       transition: color 0.15s ease;
     }
     .link-btn:hover { color: var(--neu-accent-dark); }
 
     /* ── Horizontale Monatsbalken ── */
-    .hbars-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .hbar-header { margin-bottom: 4px; }
+    .hbar-col-head {
+      color: var(--neu-text-muted) !important;
+      font-size: 10px !important;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
     }
-    .hbar-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .hbar-track-spacer { flex: 1; }
+    .hbars-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .hbar-row { display: flex; align-items: center; gap: 10px; }
     .hbar-month {
       color: var(--neu-text-muted);
       font-size: 11px;
@@ -365,18 +378,32 @@ export function injectSectionsCSS() {
       pointer-events: none;
       opacity: 0.55;
     }
-    .hbar-ref-legend {
-      color: var(--neu-text-muted);
-      font-size: 10px;
-      margin-top: 10px;
-      text-align: right;
-    }
     .hbar-val {
       color: var(--neu-text-muted);
       font-size: 11px;
       text-align: right;
       width: 72px;
       flex-shrink: 0;
+    }
+    .hbar-delta {
+      font-size: 11px;
+      font-weight: 500;
+      text-align: right;
+      width: 72px;
+      flex-shrink: 0;
+    }
+    .hbar-cum {
+      font-size: 11px;
+      font-weight: 500;
+      text-align: right;
+      width: 72px;
+      flex-shrink: 0;
+    }
+    .hbar-ref-legend {
+      color: var(--neu-text-muted);
+      font-size: 10px;
+      margin-top: 10px;
+      text-align: right;
     }
 
     /* ── Kunden ── */
@@ -404,6 +431,7 @@ export function injectSectionsCSS() {
     .customer-meta { color: var(--neu-text-muted); font-size: 11px; margin-top: 2px; }
     .customer-nums { text-align: right; flex-shrink: 0; }
     .customer-basis { color: var(--neu-text-strong); font-size: 13px; font-weight: 500; }
+    .customer-half  { color: var(--neu-text-muted);  font-size: 11px; margin-top: 2px; }
 
     /* ── Letzte Verkäufe ── */
     .sale-list { display: flex; flex-direction: column; gap: 10px; }
